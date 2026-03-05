@@ -1,4 +1,3 @@
-import { getSpotifyClientAccessToken } from "@/lib/spotify";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
@@ -8,28 +7,26 @@ export async function GET(req: NextRequest) {
   if (!artistId) {
     return NextResponse.json({ error: "Missing artist ID" }, { status: 400 });
   }
+  
+  if (!userToken) {
+    return NextResponse.json({ error: "User authentication required. Please log in with Spotify first." }, { status: 401 });
+  }
 
   try {
-    // Use user token if provided, otherwise fall back to app credentials
-    let accessToken = userToken;
-    if (!accessToken) {
-      accessToken = await getSpotifyClientAccessToken();
-    }
+    console.log("Fetching artist data for ID:", artistId, "with user token");
     
-    console.log("Fetching artist data for ID:", artistId, "with", userToken ? "user token" : "app token");
-    
-    // Get artist info, top tracks, and albums in parallel
+    // Get artist info, top tracks, and albums in parallel using user token
     const [artistRes, topTracksRes, albumsRes] = await Promise.all([
       fetch(`https://api.spotify.com/v1/artists/${artistId}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${userToken}` },
         cache: "no-store"
       }),
       fetch(`https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=US`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${userToken}` },
         cache: "no-store"
       }),
       fetch(`https://api.spotify.com/v1/artists/${artistId}/albums?market=US&limit=10`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${userToken}` },
         cache: "no-store"
       })
     ]);

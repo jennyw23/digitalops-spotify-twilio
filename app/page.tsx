@@ -92,6 +92,11 @@ export default function HomePage() {
 
   // Load artist data for demo tab
   const searchArtist = async () => {
+    if (!tokenState?.accessToken) {
+      alert("Please log in with Spotify first!");
+      return;
+    }
+    
     if (!artistQuery.trim()) return;
     
     setLoadingArtist(true);
@@ -110,9 +115,8 @@ export default function HomePage() {
       
       setSearchedArtistName(searchData.artistName);
       
-      // Then get full artist data (pass user token if available for better permissions)
-      const tokenParam = tokenState?.accessToken ? `&userToken=${encodeURIComponent(tokenState.accessToken)}` : "";
-      const artistRes = await fetch(`/api/spotify/artist?id=${searchData.artistId}${tokenParam}`);
+      // Then get full artist data with user token (required for these endpoints)
+      const artistRes = await fetch(`/api/spotify/artist?id=${searchData.artistId}&userToken=${encodeURIComponent(tokenState.accessToken)}`);
       const artistData = await artistRes.json();
       
       if (artistData.error) {
