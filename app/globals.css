@@ -51,3 +51,78 @@ code {
   padding: 2px 6px;
   border-radius: 6px;
 }
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #30363d;
+}
+
+.tab {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 12px 20px;
+  cursor: pointer;
+  color: #8b949e;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.tab:hover {
+  color: #e6edf3;
+}
+
+.tab.active {
+  color: #e6edf3;
+  border-bottom-color: #238636;
+}
+
+.track-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+
+.track-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  background: #0d1117;
+  border: 1px solid #21262d;
+}
+
+.track-item:hover {
+  border-color: #30363d;
+}
+
+.artist-info {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.artist-image {
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+}
+
+input[type="text"] {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #e6edf3;
+  width: 100%;
+  max-width: 400px;
+  font-size: 14px;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: #238636;
+}
