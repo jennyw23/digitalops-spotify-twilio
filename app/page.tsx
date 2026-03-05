@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type TokenState = {
@@ -446,10 +447,12 @@ export default function HomePage() {
               <div style={{ marginTop: "24px" }}>
                 <div className="artist-info">
                   {artistData.artist.images[0] && (
-                    <img
+                    <Image
                       src={artistData.artist.images[0].url}
                       alt={artistData.artist.name}
                       className="artist-image"
+                      width={180}
+                      height={180}
                     />
                   )}
                   <div>
@@ -544,7 +547,7 @@ export default function HomePage() {
               </p>
             </div>
             <p className="muted" style={{ marginTop: "12px" }}>
-              You'll receive a confirmation once joined.
+              You&apos;ll receive a confirmation once joined.
             </p>
           </section>
 
@@ -661,7 +664,7 @@ export default function HomePage() {
           <section className="card">
             <h2>Step 4: Request Songs</h2>
             <p>
-              Send song titles to the WhatsApp number. They'll be automatically added to your playlist!
+              Send song titles to the WhatsApp number. They&apos;ll be automatically added to your playlist!
             </p>
             <p className="muted">Example: <code>Levitating by Dua Lipa</code></p>
             
