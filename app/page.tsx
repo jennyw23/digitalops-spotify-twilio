@@ -26,20 +26,16 @@ type ArtistData = {
     genres: string[];
     followers: { total: number };
   };
-  topTracks: {
-    tracks: Array<{
-      name: string;
-      album: { name: string };
-      duration_ms: number;
-    }>;
+  latestAlbum: {
+    name: string;
+    release_date: string;
+    images: Array<{ url: string }>;
   };
-  albums: {
-    items: Array<{
-      name: string;
-      release_date: string;
-      total_tracks: number;
-    }>;
-  };
+  tracks: Array<{
+    name: string;
+    duration_ms: number;
+    track_number: number;
+  }>;
 };
 
 const STORAGE_KEY = "spotify_token_state";
@@ -466,31 +462,42 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <h3 style={{ marginTop: "24px" }}>Top Tracks</h3>
-                <ul className="track-list">
-                  {artistData.topTracks.tracks.slice(0, 5).map((track, i) => (
-                    <li key={i} className="track-item">
-                      <strong>{track.name}</strong>
-                      <br />
-                      <span className="muted">
-                        {track.album.name} • {Math.floor(track.duration_ms / 60000)}:{String(Math.floor((track.duration_ms % 60000) / 1000)).padStart(2, '0')}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                <h3 style={{ marginTop: "24px" }}>Recent Albums</h3>
-                <ul className="track-list">
-                  {artistData.albums.items.slice(0, 5).map((album, i) => (
-                    <li key={i} className="track-item">
-                      <strong>{album.name}</strong>
-                      <br />
-                      <span className="muted">
-                        {album.release_date} • {album.total_tracks} tracks
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                {artistData.latestAlbum && (
+                  <div style={{ marginTop: "24px" }}>
+                    <h3>Latest Album</h3>
+                    <div style={{ display: "flex", gap: "16px", marginTop: "16px" }}>
+                      {artistData.latestAlbum.images[0] && (
+                        <Image
+                          src={artistData.latestAlbum.images[0].url}
+                          alt={artistData.latestAlbum.name}
+                          width={160}
+                          height={160}
+                          style={{ borderRadius: "8px" }}
+                        />
+                      )}
+                      <div>
+                        <p style={{ margin: "0 0 8px 0", fontWeight: 600, fontSize: "16px" }}>
+                          {artistData.latestAlbum.name}
+                        </p>
+                        <p className="muted" style={{ margin: "0 0 16px 0" }}>
+                          Released {artistData.latestAlbum.release_date}
+                        </p>
+                        <h4 style={{ margin: "0 0 12px 0" }}>Tracks</h4>
+                        <ul className="track-list">
+                          {artistData.tracks.map((track, i) => (
+                            <li key={i} className="track-item">
+                              <strong>{track.track_number}. {track.name}</strong>
+                              <br />
+                              <span className="muted">
+                                {Math.floor(track.duration_ms / 60000)}:{String(Math.floor((track.duration_ms % 60000) / 1000)).padStart(2, '0')}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             
