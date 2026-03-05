@@ -116,11 +116,16 @@ export default function HomePage() {
       const artistRes = await fetch(`/api/spotify/artist?id=${searchData.artistId}&userToken=${encodeURIComponent(tokenState.accessToken)}`);
       const artistData = await artistRes.json();
       
+      console.log("Artist response:", artistData);
+      
       if (artistData.error) {
         console.error("Artist data error:", artistData.error);
         alert("Artist data error: " + artistData.error);
-      } else {
+      } else if (artistData.artist && artistData.latestAlbum) {
         setArtistData(artistData);
+      } else {
+        console.error("Invalid artist response:", artistData);
+        alert("Invalid artist response structure");
       }
     } catch (err) {
       console.error("Search exception:", err);
@@ -453,12 +458,16 @@ export default function HomePage() {
                   )}
                   <div>
                     <h3 style={{ margin: "0 0 8px 0" }}>{artistData.artist.name}</h3>
-                    <p className="muted" style={{ margin: "4px 0" }}>
-                      {artistData.artist.followers.total.toLocaleString()} followers
-                    </p>
-                    <p className="muted" style={{ margin: "4px 0" }}>
-                      Genres: {artistData.artist.genres.slice(0, 3).join(", ") || "N/A"}
-                    </p>
+                    {artistData.artist.followers && (
+                      <p className="muted" style={{ margin: "4px 0" }}>
+                        {artistData.artist.followers.total.toLocaleString()} followers
+                      </p>
+                    )}
+                    {artistData.artist.genres && artistData.artist.genres.length > 0 && (
+                      <p className="muted" style={{ margin: "4px 0" }}>
+                        Genres: {artistData.artist.genres.slice(0, 3).join(", ")}
+                      </p>
+                    )}
                   </div>
                 </div>
 

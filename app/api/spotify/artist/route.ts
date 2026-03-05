@@ -42,6 +42,15 @@ export async function GET(req: NextRequest) {
     const artist = await artistRes.json();
     const albumsData = await albumsRes.json();
     
+    console.log("Artist response structure:", {
+      name: artist.name,
+      hasFollowers: !!artist.followers,
+      hasGenres: !!artist.genres,
+      hasImages: !!artist.images,
+      genresCount: artist.genres?.length
+    });
+    console.log("Albums response:", { itemsCount: albumsData.items?.length });
+    
     const latestAlbum = albumsData.items[0];
     
     // If we got an album, fetch its tracks
