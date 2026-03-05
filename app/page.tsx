@@ -401,24 +401,44 @@ export default function HomePage() {
               This demonstrates how we call the Spotify API to retrieve artist information, top tracks, and album data.
             </p>
             
-            <div style={{ marginTop: "16px" }}>
-              <label style={{ display: "block", marginBottom: "8px", fontWeight: 600 }}>
-                Search for an artist:
-              </label>
-              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                <input
-                  type="text"
-                  value={artistQuery}
-                  onChange={(e) => setArtistQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && searchArtist()}
-                  placeholder="e.g., Taylor Swift, The Weeknd, Ed Sheeran..."
-                  style={{ flex: 1 }}
-                />
-                <button onClick={searchArtist} disabled={loadingArtist || !artistQuery.trim()}>
-                  {loadingArtist ? "Searching..." : "Search"}
-                </button>
+            {!tokenState ? (
+              <div style={{ 
+                padding: "16px", 
+                marginTop: "16px", 
+                backgroundColor: "rgba(30, 215, 96, 0.1)", 
+                borderRadius: "8px",
+                border: "1px solid rgb(30, 215, 96)"
+              }}>
+                <p style={{ margin: "0 0 12px 0", fontWeight: 600 }}>
+                  🔑 Spotify Login Required
+                </p>
+                <p style={{ margin: "0 0 12px 0", fontSize: "14px" }}>
+                  To search for artists and view their data, you need to authorize with Spotify first.
+                </p>
+                <a href={spotifyAuthUrl}>
+                  <button style={{ marginTop: "8px" }}>Log In with Spotify</button>
+                </a>
               </div>
-            </div>
+            ) : (
+              <div style={{ marginTop: "16px" }}>
+                <label style={{ display: "block", marginBottom: "8px", fontWeight: 600 }}>
+                  Search for an artist:
+                </label>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <input
+                    type="text"
+                    value={artistQuery}
+                    onChange={(e) => setArtistQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && searchArtist()}
+                    placeholder="e.g., Taylor Swift, The Weeknd, Ed Sheeran..."
+                    style={{ flex: 1 }}
+                  />
+                  <button onClick={searchArtist} disabled={loadingArtist || !artistQuery.trim()}>
+                    {loadingArtist ? "Searching..." : "Search"}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {loadingArtist && <p style={{ marginTop: "16px" }}>Loading artist data from Spotify API...</p>}
 
