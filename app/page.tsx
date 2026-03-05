@@ -33,9 +33,8 @@ export default function HomePage() {
 
   const spotifyAuthUrl = useMemo(() => {
     const clientId = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID;
-    const redirectUri = process.env.NEXT_PUBLIC_SITE_URL
-      ? `${process.env.NEXT_PUBLIC_SITE_URL}/api/spotify/callback`
-      : "http://localhost:3000/api/spotify/callback";
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "http://localhost:3000";
+    const redirectUri = `${siteUrl}/api/spotify/callback`;
     const scopes = [
       "streaming",
       "user-read-email",

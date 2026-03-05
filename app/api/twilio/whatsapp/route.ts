@@ -6,24 +6,24 @@ import { randomUUID } from "crypto";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  const formData = await req.formData();
+  const params: Record<string, string> = {};
+  formData.forEach((value, key) => {
+    params[key] = String(value);
+  });
+
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   if (authToken) {
     const signature = req.headers.get("x-twilio-signature") ?? "";
     const url = req.url;
-    const formData = await req.formData();
-    const params: Record<string, string> = {};
-    formData.forEach((value, key) => {
-      params[key] = String(value);
-    });
 
     if (!validateTwilioSignature(signature, url, params, authToken)) {
       return new Response("Forbidden", { status: 403 });
     }
   }
 
-  const formData = await req.formData();
-  const body = String(formData.get("Body") ?? "").trim();
-  const from = String(formData.get("From") ?? "unknown").trim();
+  const body = (params.Body ?? "").trim();
+  const from = (params.From ?? "unknown").trim();
 
   if (!body) {
     return new Response(buildTwimlMessage("Send a song title, e.g.: Blinding Lights by The Weeknd"), {
