@@ -43,15 +43,8 @@ type ArtistData = {
 
 const STORAGE_KEY = "spotify_token_state";
 
-// Sample artist IDs for demo
-const SAMPLE_ARTISTS = [
-  { name: "Taylor Swift", id: "06HL4z0CvFAxyc27GXpf02" },
-  { name: "The Weeknd", id: "1Xyo4u8uXC1ZmMpatF05PJ" },
-  { name: "Ed Sheeran", id: "6eUKZXaKkcviH0Ku9w2n3V" }
-];
-
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState<"demo" | "jukebox">("demo");
+  const [activeTab, setActiveTab] = useState<"demo" | "jukebox" | "playlist">("demo");
   const [tokenState, setTokenState] = useState<TokenState | null>(null);
   const [deviceId, setDeviceId] = useState<string>("");
   const [latestRequest, setLatestRequest] = useState<SongRequest | null>(null);
@@ -62,7 +55,15 @@ export default function HomePage() {
   // Demo tab state
   const [artistData, setArtistData] = useState<ArtistData | null>(null);
   const [loadingArtist, setLoadingArtist] = useState(false);
-  const [selectedArtist, setSelectedArtist] = useState(SAMPLE_ARTISTS[0].id);
+  const [artistQuery, setArtistQuery] = useState("");
+  const [searchedArtistName, setSearchedArtistName] = useState("");
+  
+  // Playlist tab state
+  const [playlistId, setPlaylistId] = useState<string>("");
+  const [playlistUrl, setPlaylistUrl] = useState<string>("");
+  const [playlistName, setPlaylistName] = useState<string>("");
+  const [creatingPlaylist, setCreatingPlaylist] = useState(false);
+  const [activePlaylistMode, setActivePlaylistMode] = useState(false);
 
   const playerRef = useRef<SpotifyPlayer | null>(null);
   const lastPlayedRequestIdRef = useRef<string>("");
@@ -76,7 +77,9 @@ export default function HomePage() {
       "user-read-email",
       "user-read-private",
       "user-read-playback-state",
-      "user-modify-playback-state"
+      "user-modify-playback-state",
+      "playlist-modify-public",
+      "playlist-modify-private"
     ];
     const params = new URLSearchParams({
       client_id: clientId ?? "",
@@ -88,22 +91,104 @@ export default function HomePage() {
   }, []);
 
   // Load artist data for demo tab
-  useEffect(() => {
-    if (activeTab !== "demo" || !selectedArtist) return;
+  const searchArtist = async () => {
+    if (!artistQuery.trim()) return;
     
     setLoadingArtist(true);
-    fetch(`/api/spotify/artist?id=${selectedArtist}`)
+    setArtistData(null);
+    try {
+      // First, search for artist by name
+      const searchRes = await fetch(`/api/spotify/search-artist?q=${encodeURIComponent(artistQuery)}`);
+      const searchData = await searchRes.json();
+      
+      if (searchData.error) {
+        console.error("Search error:", searchData.error);
+        alert("Artist search error: " + searchData.error);
+        setLoadingArtist(false);
+        return;
+      }
+      
+      setSearchedArtistName(searchData.artistName);
+      
+      // Then get full artist data (pass user token if available for better permissions)
+      const tokenParam = tokenState?.accessToken ? `&userToken=${encodeURIComponent(tokenState.accessToken)}` : "";
+      const artistRes = await fetch(`/api/spotify/artist?id=${searchData.artistId}${tokenParam}`);
+      const artistData = await artistRes.json();
+      
+      if (artistData.error) {
+        console.error("Artist data error:", artistData.error);
+        alert("Artist data error: " + artistData.error);
+      } else {
+        setArtistData(artistData);
+      }
+    } catch (err) {
+      console.error("Search exception:", err);
+      alert("Error: " + (err instanceof Error ? err.message : "Unknown error"));
+    } finally {
+      setLoadingArtist(false);
+    }
+  };
+
+  const createPlaylist = async () => {
+    if (!tokenState?.accessToken) return;
+    
+    setCreatingPlaylist(true);
+    try {
+      const res = await fetch("/api/spotify/playlist/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accessToken: tokenState.accessToken,
+          name: "WhatsApp Song Requests",
+          description: "Songs requested via WhatsApp - Digital Ops Demo"
+        })
+      });
+      
+      const data = await res.json();
+      if (data.error) {
+        alert("Failed to create playlist: " + data.error);
+      } else {
+        setPlaylistId(data.playlistId);
+        setPlaylistUrl(data.url);
+        setPlaylistName(data.name);
+        
+        // Set as active playlist
+        await fetch("/api/playlist/set-active", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ playlistId: data.playlistId })
+        });
+        setActivePlaylistMode(true);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to create playlist");
+    } finally {
+      setCreatingPlaylist(false);
+    }
+  };
+
+  const togglePlaylistMode = async (enabled: boolean) => {
+    await fetch("/api/playlist/set-active", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playlistId: enabled ? playlistId : null })
+    });
+    setActivePlaylistMode(enabled);
+  };
+
+  useEffect(() => {
+    // Load active playlist on mount
+    fetch("/api/playlist/get-active")
       .then(res => res.json())
       .then(data => {
-        if (data.error) {
-          console.error(data.error);
-        } else {
-          setArtistData(data);
+        if (data.playlistId) {
+          setPlaylistId(data.playlistId);
+          setActivePlaylistMode(true);
         }
       })
-      .catch(err => console.error(err))
-      .finally(() => setLoadingArtist(false));
-  }, [selectedArtist, activeTab]);
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -211,7 +296,7 @@ export default function HomePage() {
   }, [tokenState?.accessToken, activeTab]);
 
   useEffect(() => {
-    if (!tokenState?.accessToken || !deviceId || activeTab !== "jukebox") {
+    if (!tokenState?.accessToken || activeTab === "demo") {
       return;
     }
 
@@ -230,20 +315,41 @@ export default function HomePage() {
 
       setIsPlayingRequest(true);
       try {
-        const playResponse = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${tokenState.accessToken}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ uris: [data.request.uri] })
-        });
+        if (activePlaylistMode && playlistId) {
+          // Add to playlist
+          const addRes = await fetch("/api/spotify/playlist/add-track", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              accessToken: tokenState.accessToken,
+              playlistId,
+              trackUri: data.request.uri
+            })
+          });
+          
+          if (addRes.ok) {
+            lastPlayedRequestIdRef.current = data.request.id;
+            setStatus(`Added to playlist: ${data.request.title} — ${data.request.artist}`);
+          } else {
+            setStatus("Failed to add to playlist");
+          }
+        } else if (deviceId && activeTab === "jukebox") {
+          // Play on device
+          const playResponse = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${tokenState.accessToken}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ uris: [data.request.uri] })
+          });
 
-        if (playResponse.ok || playResponse.status === 204) {
-          lastPlayedRequestIdRef.current = data.request.id;
-          setStatus(`Now playing: ${data.request.title} — ${data.request.artist}`);
-        } else {
-          setStatus("Failed to play request. Open Spotify once and keep this page active.");
+          if (playResponse.ok || playResponse.status === 204) {
+            lastPlayedRequestIdRef.current = data.request.id;
+            setStatus(`Now playing: ${data.request.title} — ${data.request.artist}`);
+          } else {
+            setStatus("Failed to play request. Open Spotify once and keep this page active.");
+          }
         }
       } finally {
         setIsPlayingRequest(false);
@@ -253,7 +359,7 @@ export default function HomePage() {
     pollLatestRequest();
     const interval = window.setInterval(pollLatestRequest, 4000);
     return () => window.clearInterval(interval);
-  }, [tokenState?.accessToken, deviceId, isPlayingRequest, activeTab]);
+  }, [tokenState?.accessToken, deviceId, isPlayingRequest, activeTab, activePlaylistMode, playlistId]);
 
   return (
     <main>
@@ -275,6 +381,12 @@ export default function HomePage() {
         >
           📱 WhatsApp Jukebox
         </button>
+        <button
+          className={`tab ${activeTab === "playlist" ? "active" : ""}`}
+          onClick={() => setActiveTab("playlist")}
+        >
+          🎵 Playlist Builder
+        </button>
       </div>
 
       {activeTab === "demo" && (
@@ -287,28 +399,24 @@ export default function HomePage() {
             
             <div style={{ marginTop: "16px" }}>
               <label style={{ display: "block", marginBottom: "8px", fontWeight: 600 }}>
-                Select an artist:
+                Search for an artist:
               </label>
-              <select
-                value={selectedArtist}
-                onChange={(e) => setSelectedArtist(e.target.value)}
-                style={{
-                  background: "#0d1117",
-                  border: "1px solid #30363d",
-                  borderRadius: "8px",
-                  padding: "10px 12px",
-                  color: "#e6edf3",
-                  cursor: "pointer",
-                  fontSize: "14px"
-                }}
-              >
-                {SAMPLE_ARTISTS.map(artist => (
-                  <option key={artist.id} value={artist.id}>{artist.name}</option>
-                ))}
-              </select>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <input
+                  type="text"
+                  value={artistQuery}
+                  onChange={(e) => setArtistQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && searchArtist()}
+                  placeholder="e.g., Taylor Swift, The Weeknd, Ed Sheeran..."
+                  style={{ flex: 1 }}
+                />
+                <button onClick={searchArtist} disabled={loadingArtist || !artistQuery.trim()}>
+                  {loadingArtist ? "Searching..." : "Search"}
+                </button>
+              </div>
             </div>
 
-            {loadingArtist && <p style={{ marginTop: "16px" }}>Loading artist data...</p>}
+            {loadingArtist && <p style={{ marginTop: "16px" }}>Loading artist data from Spotify API...</p>}
 
             {artistData && !loadingArtist && (
               <div style={{ marginTop: "24px" }}>
@@ -326,7 +434,7 @@ export default function HomePage() {
                       {artistData.artist.followers.total.toLocaleString()} followers
                     </p>
                     <p className="muted" style={{ margin: "4px 0" }}>
-                      Genres: {artistData.artist.genres.slice(0, 3).join(", ")}
+                      Genres: {artistData.artist.genres.slice(0, 3).join(", ") || "N/A"}
                     </p>
                   </div>
                 </div>
@@ -357,6 +465,10 @@ export default function HomePage() {
                   ))}
                 </ul>
               </div>
+            )}
+            
+            {!artistData && !loadingArtist && artistQuery && (
+              <p className="muted" style={{ marginTop: "16px" }}>Enter an artist name and click Search to see data from the Spotify API.</p>
             )}
           </section>
         </>
@@ -438,6 +550,119 @@ export default function HomePage() {
               </div>
             ) : (
               <p className="muted" style={{ marginTop: "16px" }}>No WhatsApp requests received yet.</p>
+            )}
+          </section>
+        </>
+      )}
+
+      {activeTab === "playlist" && (
+        <>
+          <section className="card">
+            <h2>Step 1: Connect Spotify</h2>
+            <p className="muted">You need to authorize Spotify to create and manage playlists.</p>
+            {!tokenState ? (
+              <a href={spotifyAuthUrl}>
+                <button>Authorize Spotify</button>
+              </a>
+            ) : (
+              <div>
+                <p>✓ Spotify authorized.</p>
+                <button
+                  className="secondary"
+                  onClick={() => {
+                    localStorage.removeItem(STORAGE_KEY);
+                    window.location.reload();
+                  }}
+                >
+                  Disconnect
+                </button>
+              </div>
+            )}
+          </section>
+
+          <section className="card">
+            <h2>Step 2: Create WhatsApp Playlist</h2>
+            <p className="muted">
+              Create a Spotify playlist where WhatsApp song requests will be automatically added.
+            </p>
+            
+            {!playlistId ? (
+              <button
+                onClick={createPlaylist}
+                disabled={!tokenState || creatingPlaylist}
+                style={{ marginTop: "12px" }}
+              >
+                {creatingPlaylist ? "Creating..." : "Create Playlist"}
+              </button>
+            ) : (
+              <div style={{ marginTop: "12px", background: "#0d1117", padding: "12px", borderRadius: "8px" }}>
+                <p style={{ margin: "4px 0" }}>
+                  <strong>Playlist Created:</strong> {playlistName || "WhatsApp Song Requests"}
+                </p>
+                {playlistUrl && (
+                  <p style={{ margin: "8px 0" }}>
+                    <a href={playlistUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#238636" }}>
+                      Open in Spotify →
+                    </a>
+                  </p>
+                )}
+                <div style={{ marginTop: "12px" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={activePlaylistMode}
+                      onChange={(e) => togglePlaylistMode(e.target.checked)}
+                      style={{ cursor: "pointer" }}
+                    />
+                    <span>Add WhatsApp requests to this playlist (instead of playing)</span>
+                  </label>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className="card">
+            <h2>Step 3: Join WhatsApp Sandbox</h2>
+            <p>Send this message on WhatsApp to join the sandbox:</p>
+            <div style={{ background: "#0d1117", padding: "12px", borderRadius: "8px", marginTop: "12px" }}>
+              <p style={{ margin: "4px 0" }}>
+                <strong>Phone number:</strong> <code>+1 415 523 8886</code>
+              </p>
+              <p style={{ margin: "4px 0" }}>
+                <strong>Message:</strong> <code>join ill-state</code>
+              </p>
+            </div>
+          </section>
+
+          <section className="card">
+            <h2>Step 4: Request Songs</h2>
+            <p>
+              Send song titles to the WhatsApp number. They'll be automatically added to your playlist!
+            </p>
+            <p className="muted">Example: <code>Levitating by Dua Lipa</code></p>
+            
+            {latestRequest && activePlaylistMode ? (
+              <div style={{ marginTop: "16px", background: "#0d1117", padding: "12px", borderRadius: "8px" }}>
+                <p style={{ margin: "4px 0" }}>
+                  <strong>Latest Addition:</strong> {latestRequest.title} — {latestRequest.artist}
+                </p>
+                <p className="muted" style={{ margin: "4px 0" }}>
+                  Query: {latestRequest.query}
+                </p>
+                <p className="muted" style={{ margin: "4px 0" }}>
+                  From: {latestRequest.from}
+                </p>
+                <p className="muted" style={{ margin: "4px 0" }}>
+                  At: {new Date(latestRequest.createdAt).toLocaleString()}
+                </p>
+                <p style={{ margin: "8px 0 4px" }}>
+                  <strong>Status:</strong> {status}
+                </p>
+              </div>
+            ) : (
+              <p className="muted" style={{ marginTop: "16px" }}>
+                {activePlaylistMode ? "No requests yet. Send a song title via WhatsApp!" : "Enable playlist mode above to start adding songs."}
+              </p>
             )}
           </section>
         </>

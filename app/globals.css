@@ -38,6 +38,12 @@ button {
   font-weight: 600;
 }
 
+button:disabled {
+  background: #21262d;
+  color: #6e7681;
+  cursor: not-allowed;
+}
+
 button.secondary {
   background: #30363d;
 }

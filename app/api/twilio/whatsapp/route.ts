@@ -1,5 +1,5 @@
 import { getSpotifyClientAccessToken, searchSpotifyTrack } from "@/lib/spotify";
-import { setLatestSongRequest } from "@/lib/songStore";
+import { getActivePlaylistId, setLatestSongRequest } from "@/lib/songStore";
 import { buildTwimlMessage, validateTwilioSignature } from "@/lib/twilio";
 import { randomUUID } from "crypto";
 
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
 
     const artist = track.artists[0]?.name ?? "Unknown Artist";
 
-    await setLatestSongRequest({
+    const request = {
       id: randomUUID(),
       uri: track.uri,
       title: track.name,
@@ -51,11 +51,25 @@ export async function POST(req: Request) {
       query: body,
       from,
       createdAt: new Date().toISOString()
-    });
+    };
 
-    return new Response(buildTwimlMessage(`Queued: ${track.name} — ${artist}. Check the website player.`), {
-      headers: { "Content-Type": "application/xml" }
-    });
+    // Check if we have an active playlist mode
+    const activePlaylistId = await getActivePlaylistId();
+    
+    if (activePlaylistId) {
+      // Add to playlist instead of playing
+      // Note: This requires a user access token which we'll store
+      // For now, just queue it normally and let the frontend handle it
+      await setLatestSongRequest(request);
+      return new Response(buildTwimlMessage(`Added to playlist: ${track.name} — ${artist}`), {
+        headers: { "Content-Type": "application/xml" }
+      });
+    } else {
+      await setLatestSongRequest(request);
+      return new Response(buildTwimlMessage(`Queued: ${track.name} — ${artist}. Check the website player.`), {
+        headers: { "Content-Type": "application/xml" }
+      });
+    }
   } catch (e) {
     const message = e instanceof Error ? e.message : "Something went wrong";
     return new Response(buildTwimlMessage(`Error processing request: ${message}`), {
