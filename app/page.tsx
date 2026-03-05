@@ -61,6 +61,9 @@ export default function HomePage() {
   const [playlistName, setPlaylistName] = useState<string>("");
   const [creatingPlaylist, setCreatingPlaylist] = useState(false);
   const [activePlaylistMode, setActivePlaylistMode] = useState(false);
+  
+  // Song requests log state
+  const [songRequests, setSongRequests] = useState<SongRequest[]>([]);
 
   const playerRef = useRef<SpotifyPlayer | null>(null);
   const lastPlayedRequestIdRef = useRef<string>("");
@@ -181,6 +184,40 @@ export default function HomePage() {
       body: JSON.stringify({ playlistId: enabled ? playlistId : null })
     });
     setActivePlaylistMode(enabled);
+  };
+
+  const downloadCSV = () => {
+    if (songRequests.length === 0) {
+      alert("No song requests to download yet");
+      return;
+    }
+
+    // Create CSV header
+    const headers = ["Timestamp", "Song Title", "Artist", "Requester", "Query"];
+    const rows = songRequests.map(req => [
+      new Date(req.createdAt).toLocaleString(),
+      req.title || "",
+      req.artist || "",
+      req.from || "",
+      req.query || ""
+    ]);
+
+    // Build CSV content
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${cell.toString().replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    // Download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `song-requests-${new Date().toISOString().split("T")[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   useEffect(() => {
@@ -319,6 +356,15 @@ export default function HomePage() {
         return;
       }
 
+      // Track all requests
+      setSongRequests(prevRequests => {
+        const exists = prevRequests.some(r => r.id === data.request!.id);
+        if (!exists) {
+          return [data.request!, ...prevRequests];
+        }
+        return prevRequests;
+      });
+
       setIsPlayingRequest(true);
       try {
         if (activePlaylistMode && playlistId) {
@@ -391,7 +437,7 @@ export default function HomePage() {
           className={`tab ${activeTab === "playlist" ? "active" : ""}`}
           onClick={() => setActiveTab("playlist")}
         >
-          🎵 Playlist Builder
+          📋 Song Requests
         </button>
       </div>
 
@@ -601,113 +647,104 @@ export default function HomePage() {
       {activeTab === "playlist" && (
         <>
           <section className="card">
-            <h2>Step 1: Connect Spotify</h2>
-            <p className="muted">You need to authorize Spotify to create and manage playlists.</p>
-            {!tokenState ? (
-              <a href={spotifyAuthUrl}>
-                <button>Authorize Spotify</button>
-              </a>
-            ) : (
-              <div>
-                <p>✓ Spotify authorized.</p>
-                <button
-                  className="secondary"
-                  onClick={() => {
-                    localStorage.removeItem(STORAGE_KEY);
-                    window.location.reload();
-                  }}
-                >
-                  Disconnect
-                </button>
-              </div>
-            )}
-          </section>
-
-          <section className="card">
-            <h2>Step 2: Create WhatsApp Playlist</h2>
+            <h2>Song Requests Log</h2>
             <p className="muted">
-              Create a Spotify playlist where WhatsApp song requests will be automatically added.
+              All song requests received via WhatsApp. Download as CSV for analysis or record-keeping.
             </p>
             
-            {!playlistId ? (
-              <button
-                onClick={createPlaylist}
-                disabled={!tokenState || creatingPlaylist}
-                style={{ marginTop: "12px" }}
-              >
-                {creatingPlaylist ? "Creating..." : "Create Playlist"}
-              </button>
-            ) : (
-              <div style={{ marginTop: "12px", background: "#0d1117", padding: "12px", borderRadius: "8px" }}>
-                <p style={{ margin: "4px 0" }}>
-                  <strong>Playlist Created:</strong> {playlistName || "WhatsApp Song Requests"}
+            <button 
+              onClick={downloadCSV}
+              disabled={songRequests.length === 0}
+              style={{ marginTop: "12px", backgroundColor: "#238636" }}
+            >
+              📥 Download as CSV
+            </button>
+
+            {songRequests.length > 0 ? (
+              <div style={{ marginTop: "24px" }}>
+                <p style={{ fontWeight: 600, marginBottom: "12px" }}>
+                  Total Requests: {songRequests.length}
                 </p>
-                {playlistUrl && (
-                  <p style={{ margin: "8px 0" }}>
-                    <a href={playlistUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#238636" }}>
-                      Open in Spotify →
-                    </a>
-                  </p>
-                )}
-                <div style={{ marginTop: "12px" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                    <input
-                      type="checkbox"
-                      checked={activePlaylistMode}
-                      onChange={(e) => togglePlaylistMode(e.target.checked)}
-                      style={{ cursor: "pointer" }}
-                    />
-                    <span>Add WhatsApp requests to this playlist (instead of playing)</span>
-                  </label>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ 
+                    width: "100%", 
+                    borderCollapse: "collapse",
+                    fontSize: "14px"
+                  }}>
+                    <thead>
+                      <tr style={{ borderBottom: "2px solid #30363d" }}>
+                        <th style={{ padding: "8px", textAlign: "left" }}>Time</th>
+                        <th style={{ padding: "8px", textAlign: "left" }}>Song</th>
+                        <th style={{ padding: "8px", textAlign: "left" }}>Artist</th>
+                        <th style={{ padding: "8px", textAlign: "left" }}>From</th>
+                        <th style={{ padding: "8px", textAlign: "left" }}>Query</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {songRequests.map((req) => (
+                        <tr key={req.id} style={{ borderBottom: "1px solid #21262d" }}>
+                          <td style={{ padding: "8px" }}>
+                            {new Date(req.createdAt).toLocaleString()}
+                          </td>
+                          <td style={{ padding: "8px", fontWeight: 500 }}>
+                            {req.title || "-"}
+                          </td>
+                          <td style={{ padding: "8px" }}>
+                            {req.artist || "-"}
+                          </td>
+                          <td style={{ padding: "8px" }}>
+                            {req.from || "-"}
+                          </td>
+                          <td style={{ padding: "8px", fontSize: "12px", color: "#8b949e" }}>
+                            {req.query || "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            )}
-          </section>
-
-          <section className="card">
-            <h2>Step 3: Join WhatsApp Sandbox</h2>
-            <p>Send this message on WhatsApp to join the sandbox:</p>
-            <div style={{ background: "#0d1117", padding: "12px", borderRadius: "8px", marginTop: "12px" }}>
-              <p style={{ margin: "4px 0" }}>
-                <strong>Phone number:</strong> <code>+1 415 523 8886</code>
-              </p>
-              <p style={{ margin: "4px 0" }}>
-                <strong>Message:</strong> <code>join ill-state</code>
-              </p>
-            </div>
-          </section>
-
-          <section className="card">
-            <h2>Step 4: Request Songs</h2>
-            <p>
-              Send song titles to the WhatsApp number. They&apos;ll be automatically added to your playlist!
-            </p>
-            <p className="muted">Example: <code>Levitating by Dua Lipa</code></p>
-            
-            {latestRequest && activePlaylistMode ? (
-              <div style={{ marginTop: "16px", background: "#0d1117", padding: "12px", borderRadius: "8px" }}>
-                <p style={{ margin: "4px 0" }}>
-                  <strong>Latest Addition:</strong> {latestRequest.title} — {latestRequest.artist}
+            ) : (
+              <div style={{
+                marginTop: "24px",
+                padding: "24px",
+                textAlign: "center",
+                backgroundColor: "rgba(30, 215, 96, 0.05)",
+                borderRadius: "8px",
+                border: "1px dashed rgba(30, 215, 96, 0.3)"
+              }}>
+                <p className="muted">
+                  📭 No song requests yet.
                 </p>
-                <p className="muted" style={{ margin: "4px 0" }}>
-                  Query: {latestRequest.query}
-                </p>
-                <p className="muted" style={{ margin: "4px 0" }}>
-                  From: {latestRequest.from}
-                </p>
-                <p className="muted" style={{ margin: "4px 0" }}>
-                  At: {new Date(latestRequest.createdAt).toLocaleString()}
-                </p>
-                <p style={{ margin: "8px 0 4px" }}>
-                  <strong>Status:</strong> {status}
+                <p className="muted" style={{ fontSize: "12px", marginTop: "8px" }}>
+                  Send a WhatsApp message to <strong>+1 415 523 8886</strong> with a song title to get started.
                 </p>
               </div>
-            ) : (
-              <p className="muted" style={{ marginTop: "16px" }}>
-                {activePlaylistMode ? "No requests yet. Send a song title via WhatsApp!" : "Enable playlist mode above to start adding songs."}
-              </p>
             )}
           </section>
+
+          {latestRequest && (
+            <section className="card">
+              <h2>Latest Request</h2>
+              <div style={{ background: "#0d1117", padding: "16px", borderRadius: "8px" }}>
+                <p style={{ margin: "4px 0" }}>
+                  <strong>🎵 Track:</strong> {latestRequest.title}
+                </p>
+                <p style={{ margin: "4px 0" }}>
+                  <strong>👤 Artist:</strong> {latestRequest.artist}
+                </p>
+                <p style={{ margin: "4px 0" }}>
+                  <strong>💬 From:</strong> {latestRequest.from}
+                </p>
+                <p style={{ margin: "4px 0" }}>
+                  <strong>🔍 Query:</strong> <code>{latestRequest.query}</code>
+                </p>
+                <p style={{ margin: "4px 0" }}>
+                  <strong>🕐 Time:</strong> {new Date(latestRequest.createdAt).toLocaleString()}
+                </p>
+              </div>
+            </section>
+          )}
         </>
       )}
     </main>
