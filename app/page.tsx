@@ -48,20 +48,19 @@ export default function HomePage() {
   const [status, setStatus] = useState<string>("Not connected");
   const [sdkReady, setSdkReady] = useState(false);
   const [isPlayingRequest, setIsPlayingRequest] = useState(false);
-  
+
   // Demo tab state
   const [artistData, setArtistData] = useState<ArtistData | null>(null);
   const [loadingArtist, setLoadingArtist] = useState(false);
   const [artistQuery, setArtistQuery] = useState("");
-  const [searchedArtistName, setSearchedArtistName] = useState("");
-  
+
   // Playlist tab state
   const [playlistId, setPlaylistId] = useState<string>("");
   const [playlistUrl, setPlaylistUrl] = useState<string>("");
   const [playlistName, setPlaylistName] = useState<string>("");
   const [creatingPlaylist, setCreatingPlaylist] = useState(false);
   const [activePlaylistMode, setActivePlaylistMode] = useState(false);
-  
+
   // Song requests log state
   const [songRequests, setSongRequests] = useState<SongRequest[]>([]);
 
@@ -90,48 +89,38 @@ export default function HomePage() {
     return `https://accounts.spotify.com/authorize?${params.toString()}`;
   }, []);
 
-  // Load artist data for demo tab
   const searchArtist = async () => {
     if (!tokenState?.accessToken) {
       alert("Please log in with Spotify first!");
       return;
     }
-    
+
     if (!artistQuery.trim()) return;
-    
+
     setLoadingArtist(true);
     setArtistData(null);
     try {
-      // First, search for artist by name
       const searchRes = await fetch(`/api/spotify/search-artist?q=${encodeURIComponent(artistQuery)}`);
       const searchData = await searchRes.json();
-      
+
       if (searchData.error) {
-        console.error("Search error:", searchData.error);
         alert("Artist search error: " + searchData.error);
-        setLoadingArtist(false);
         return;
       }
-      
-      setSearchedArtistName(searchData.artistName);
-      
-      // Then get full artist data with user token (required for these endpoints)
-      const artistRes = await fetch(`/api/spotify/artist?id=${searchData.artistId}&userToken=${encodeURIComponent(tokenState.accessToken)}`);
-      const artistData = await artistRes.json();
-      
-      console.log("Artist response:", artistData);
-      
-      if (artistData.error) {
-        console.error("Artist data error:", artistData.error);
-        alert("Artist data error: " + artistData.error);
-      } else if (artistData.artist && artistData.latestAlbum) {
-        setArtistData(artistData);
+
+      const artistRes = await fetch(
+        `/api/spotify/artist?id=${searchData.artistId}&userToken=${encodeURIComponent(tokenState.accessToken)}`
+      );
+      const artistResult = await artistRes.json();
+
+      if (artistResult.error) {
+        alert("Artist data error: " + artistResult.error);
+      } else if (artistResult.artist && artistResult.latestAlbum) {
+        setArtistData(artistResult);
       } else {
-        console.error("Invalid artist response:", artistData);
         alert("Invalid artist response structure");
       }
     } catch (err) {
-      console.error("Search exception:", err);
       alert("Error: " + (err instanceof Error ? err.message : "Unknown error"));
     } finally {
       setLoadingArtist(false);
@@ -140,7 +129,7 @@ export default function HomePage() {
 
   const createPlaylist = async () => {
     if (!tokenState?.accessToken) return;
-    
+
     setCreatingPlaylist(true);
     try {
       const res = await fetch("/api/spotify/playlist/create", {
@@ -152,7 +141,7 @@ export default function HomePage() {
           description: "Songs requested via WhatsApp - Digital Ops Demo"
         })
       });
-      
+
       const data = await res.json();
       if (data.error) {
         alert("Failed to create playlist: " + data.error);
@@ -160,8 +149,7 @@ export default function HomePage() {
         setPlaylistId(data.playlistId);
         setPlaylistUrl(data.url);
         setPlaylistName(data.name);
-        
-        // Set as active playlist
+
         await fetch("/api/playlist/set-active", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -192,7 +180,6 @@ export default function HomePage() {
       return;
     }
 
-    // Create CSV header
     const headers = ["Timestamp", "Song Title", "Artist", "Requester", "Query"];
     const rows = songRequests.map(req => [
       new Date(req.createdAt).toLocaleString(),
@@ -202,13 +189,11 @@ export default function HomePage() {
       req.query || ""
     ]);
 
-    // Build CSV content
     const csvContent = [
       headers.join(","),
       ...rows.map(row => row.map(cell => `"${cell.toString().replace(/"/g, '""')}"`).join(","))
     ].join("\n");
 
-    // Download
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -221,7 +206,6 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    // Load active playlist on mount
     fetch("/api/playlist/get-active")
       .then(res => res.json())
       .then(data => {
@@ -263,14 +247,10 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!tokenState?.refreshToken) {
-      return;
-    }
+    if (!tokenState?.refreshToken) return;
 
     const refreshIfNeeded = async () => {
-      if (Date.now() < tokenState.expiresAt - 60_000) {
-        return;
-      }
+      if (Date.now() < tokenState.expiresAt - 60_000) return;
 
       const response = await fetch("/api/spotify/refresh", {
         method: "POST",
@@ -299,9 +279,7 @@ export default function HomePage() {
   }, [tokenState]);
 
   useEffect(() => {
-    if (!tokenState?.accessToken || activeTab !== "jukebox") {
-      return;
-    }
+    if (!tokenState?.accessToken || activeTab !== "jukebox") return;
 
     const script = document.createElement("script");
     script.src = "https://sdk.scdn.co/spotify-player.js";
@@ -311,11 +289,11 @@ export default function HomePage() {
     window.onSpotifyWebPlaybackSDKReady = () => {
       const player = new window.Spotify.Player({
         name: "Digital Ops WhatsApp Jukebox",
-        getOAuthToken: (callback) => callback(tokenState.accessToken),
+        getOAuthToken: callback => callback(tokenState.accessToken),
         volume: 0.8
       });
 
-      player.addListener("ready", (event) => {
+      player.addListener("ready", event => {
         const payload = event as { device_id: string };
         setDeviceId(payload.device_id);
         setStatus("Spotify player connected");
@@ -339,36 +317,26 @@ export default function HomePage() {
   }, [tokenState?.accessToken, activeTab]);
 
   useEffect(() => {
-    if (!tokenState?.accessToken || activeTab === "demo") {
-      return;
-    }
+    if (!tokenState?.accessToken || activeTab === "demo") return;
 
     const pollLatestRequest = async () => {
       const response = await fetch("/api/requests/latest", { cache: "no-store" });
-      if (!response.ok) {
-        return;
-      }
+      if (!response.ok) return;
 
       const data = (await response.json()) as { request: SongRequest | null };
       setLatestRequest(data.request);
 
-      if (!data.request || data.request.id === lastPlayedRequestIdRef.current || isPlayingRequest) {
-        return;
-      }
+      if (!data.request || data.request.id === lastPlayedRequestIdRef.current || isPlayingRequest) return;
 
-      // Track all requests
       setSongRequests(prevRequests => {
         const exists = prevRequests.some(r => r.id === data.request!.id);
-        if (!exists) {
-          return [data.request!, ...prevRequests];
-        }
+        if (!exists) return [data.request!, ...prevRequests];
         return prevRequests;
       });
 
       setIsPlayingRequest(true);
       try {
         if (activePlaylistMode && playlistId) {
-          // Add to playlist
           const addRes = await fetch("/api/spotify/playlist/add-track", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -378,7 +346,7 @@ export default function HomePage() {
               trackUri: data.request.uri
             })
           });
-          
+
           if (addRes.ok) {
             lastPlayedRequestIdRef.current = data.request.id;
             setStatus(`Added to playlist: ${data.request.title} — ${data.request.artist}`);
@@ -386,15 +354,17 @@ export default function HomePage() {
             setStatus("Failed to add to playlist");
           }
         } else if (deviceId && activeTab === "jukebox") {
-          // Play on device
-          const playResponse = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
-            method: "PUT",
-            headers: {
-              Authorization: `Bearer ${tokenState.accessToken}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ uris: [data.request.uri] })
-          });
+          const playResponse = await fetch(
+            `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
+            {
+              method: "PUT",
+              headers: {
+                Authorization: `Bearer ${tokenState.accessToken}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({ uris: [data.request.uri] })
+            }
+          );
 
           if (playResponse.ok || playResponse.status === 204) {
             lastPlayedRequestIdRef.current = data.request.id;
@@ -415,22 +385,16 @@ export default function HomePage() {
 
   return (
     <main>
-      <h1>Spotify + Twilio API Communication Demo</h1>
-      <p className="muted">
-        Showcasing two-layer API integration: Spotify Web API for music data and Twilio WhatsApp for remote control.
-      </p>
+      <div className="app-header">
+        <h1>Spotify + Twilio Integration</h1>
+        <p>Two-layer API demo: Spotify Web API for music data &amp; Twilio WhatsApp for remote control.</p>
+      </div>
 
       <div className="tabs">
-        <button
-          className={`tab ${activeTab === "demo" ? "active" : ""}`}
-          onClick={() => setActiveTab("demo")}
-        >
+        <button className={`tab ${activeTab === "demo" ? "active" : ""}`} onClick={() => setActiveTab("demo")}>
           📊 Spotify API Demo
         </button>
-        <button
-          className={`tab ${activeTab === "jukebox" ? "active" : ""}`}
-          onClick={() => setActiveTab("jukebox")}
-        >
+        <button className={`tab ${activeTab === "jukebox" ? "active" : ""}`} onClick={() => setActiveTab("jukebox")}>
           📱 WhatsApp Jukebox
         </button>
         <button
@@ -444,137 +408,139 @@ export default function HomePage() {
       {activeTab === "demo" && (
         <>
           <section className="card">
-            <h2>Spotify API Exploration</h2>
-            <p className="muted">
-              This demonstrates how we call the Spotify API to retrieve artist information, top tracks, and album data.
+            <h2>Spotify API Explorer</h2>
+            <p className="muted" style={{ margin: "4px 0 20px" }}>
+              Search for any artist to see their profile, latest album, and tracklist pulled live from the Spotify API.
             </p>
-            
+
             {!tokenState ? (
-              <div style={{ 
-                padding: "16px", 
-                marginTop: "16px", 
-                backgroundColor: "rgba(30, 215, 96, 0.1)", 
-                borderRadius: "8px",
-                border: "1px solid rgb(30, 215, 96)"
-              }}>
-                <p style={{ margin: "0 0 12px 0", fontWeight: 600 }}>
-                  🔑 Spotify Login Required
-                </p>
-                <p style={{ margin: "0 0 12px 0", fontSize: "14px" }}>
-                  To search for artists and view their data, you need to authorize with Spotify first.
+              <div className="auth-box">
+                <p style={{ margin: "0 0 6px 0", fontWeight: 700, fontSize: "15px" }}>🔑 Spotify Login Required</p>
+                <p style={{ margin: "0 0 16px 0", fontSize: "14px", color: "var(--muted-light)" }}>
+                  Authorize with Spotify to search for artists and view their data.
                 </p>
                 <a href={spotifyAuthUrl}>
-                  <button style={{ marginTop: "8px" }}>Log In with Spotify</button>
+                  <button>Log In with Spotify</button>
                 </a>
               </div>
             ) : (
-              <div style={{ marginTop: "16px" }}>
-                <label style={{ display: "block", marginBottom: "8px", fontWeight: 600 }}>
-                  Search for an artist:
+              <div>
+                <label style={{ display: "block", marginBottom: "8px", fontWeight: 600, fontSize: "14px" }}>
+                  Search for an artist
                 </label>
-                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                   <input
                     type="text"
                     value={artistQuery}
-                    onChange={(e) => setArtistQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && searchArtist()}
-                    placeholder="e.g., Taylor Swift, The Weeknd, Ed Sheeran..."
-                    style={{ flex: 1 }}
+                    onChange={e => setArtistQuery(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && searchArtist()}
+                    placeholder="e.g., Taylor Swift, The Weeknd, Ed Sheeran…"
+                    style={{ maxWidth: "none" }}
                   />
-                  <button onClick={searchArtist} disabled={loadingArtist || !artistQuery.trim()}>
-                    {loadingArtist ? "Searching..." : "Search"}
+                  <button
+                    onClick={searchArtist}
+                    disabled={loadingArtist || !artistQuery.trim()}
+                    style={{ whiteSpace: "nowrap" }}
+                  >
+                    {loadingArtist ? "Searching…" : "Search"}
                   </button>
                 </div>
               </div>
             )}
 
-            {loadingArtist && <p style={{ marginTop: "16px" }}>Loading artist data from Spotify API...</p>}
+            {loadingArtist && (
+              <p className="muted" style={{ marginTop: "20px" }}>
+                Loading artist data from Spotify API…
+              </p>
+            )}
+          </section>
 
-            {artistData && !loadingArtist && (
-              <div style={{ marginTop: "24px" }}>
-                <div className="artist-info">
+          {artistData && !loadingArtist && (
+            <>
+              <section className="card">
+                <div className="artist-header">
                   {artistData.artist.images[0] && (
                     <Image
                       src={artistData.artist.images[0].url}
                       alt={artistData.artist.name}
                       className="artist-image"
-                      width={180}
-                      height={180}
+                      width={100}
+                      height={100}
                     />
                   )}
-                  <div>
-                    <h3 style={{ margin: "0 0 8px 0" }}>{artistData.artist.name}</h3>
+                  <div className="artist-meta">
+                    <h3>{artistData.artist.name}</h3>
                     {artistData.artist.followers && (
-                      <p className="muted" style={{ margin: "4px 0" }}>
+                      <p className="muted">
                         {artistData.artist.followers.total.toLocaleString()} followers
                       </p>
                     )}
                     {artistData.artist.genres && artistData.artist.genres.length > 0 && (
-                      <p className="muted" style={{ margin: "4px 0" }}>
-                        Genres: {artistData.artist.genres.slice(0, 3).join(", ")}
-                      </p>
+                      <div style={{ marginTop: "8px" }}>
+                        {artistData.artist.genres.slice(0, 4).map(g => (
+                          <span key={g} className="genre-pill">{g}</span>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
+              </section>
 
-                {artistData.latestAlbum && (
-                  <div style={{ marginTop: "24px" }}>
-                    <h3>Latest Album</h3>
-                    <div style={{ display: "flex", gap: "16px", marginTop: "16px" }}>
-                      {artistData.latestAlbum.images[0] && (
-                        <Image
-                          src={artistData.latestAlbum.images[0].url}
-                          alt={artistData.latestAlbum.name}
-                          width={160}
-                          height={160}
-                          style={{ borderRadius: "8px" }}
-                        />
-                      )}
-                      <div>
-                        <p style={{ margin: "0 0 8px 0", fontWeight: 600, fontSize: "16px" }}>
-                          {artistData.latestAlbum.name}
-                        </p>
-                        <p className="muted" style={{ margin: "0 0 16px 0" }}>
-                          Released {artistData.latestAlbum.release_date}
-                        </p>
-                        <h4 style={{ margin: "0 0 12px 0" }}>Tracks</h4>
-                        <ul className="track-list">
-                          {artistData.tracks.map((track, i) => (
-                            <li key={i} className="track-item">
-                              <strong>{track.track_number}. {track.name}</strong>
-                              <br />
-                              <span className="muted">
-                                {Math.floor(track.duration_ms / 60000)}:{String(Math.floor((track.duration_ms % 60000) / 1000)).padStart(2, '0')}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+              {artistData.latestAlbum && (
+                <section className="card">
+                  <h2>Latest Album</h2>
+                  <div className="album-card">
+                    {artistData.latestAlbum.images[0] && (
+                      <Image
+                        src={artistData.latestAlbum.images[0].url}
+                        alt={artistData.latestAlbum.name}
+                        className="album-image"
+                        width={140}
+                        height={140}
+                      />
+                    )}
+                    <div className="album-meta" style={{ flex: 1 }}>
+                      <h4>{artistData.latestAlbum.name}</h4>
+                      <p>Released {artistData.latestAlbum.release_date}</p>
                     </div>
                   </div>
-                )}
-              </div>
-            )}
-            
-            {!artistData && !loadingArtist && artistQuery && (
-              <p className="muted" style={{ marginTop: "16px" }}>Enter an artist name and click Search to see data from the Spotify API.</p>
-            )}
-          </section>
+
+                  <h3>Tracklist</h3>
+                  <ul className="track-list">
+                    {artistData.tracks.map((track, i) => (
+                      <li key={i} className="track-item">
+                        <span className="track-number">{track.track_number}</span>
+                        <span className="track-name">{track.name}</span>
+                        <span className="track-duration">
+                          {Math.floor(track.duration_ms / 60000)}:
+                          {String(Math.floor((track.duration_ms % 60000) / 1000)).padStart(2, "0")}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+            </>
+          )}
         </>
       )}
 
       {activeTab === "jukebox" && (
         <>
           <section className="card">
-            <h2>Step 1: Connect Spotify</h2>
-            <p className="muted">A Spotify Premium account is required for Web Playback SDK streaming.</p>
+            <h2>
+              <span className="step-label">1</span>Connect Spotify
+            </h2>
+            <p className="muted" style={{ marginTop: 4, marginBottom: 16 }}>
+              A Spotify Premium account is required for Web Playback SDK streaming.
+            </p>
             {!tokenState ? (
               <a href={spotifyAuthUrl}>
                 <button>Authorize Spotify</button>
               </a>
             ) : (
-              <div>
-                <p>✓ Spotify authorized.</p>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                <span className="status-badge connected">✓ Spotify authorized</span>
                 <button
                   className="secondary"
                   onClick={() => {
@@ -586,59 +552,75 @@ export default function HomePage() {
                 </button>
               </div>
             )}
-            <p style={{ marginTop: "12px" }}>
-              <strong>Status:</strong> {status}
-            </p>
-            <p>
-              <strong>Device ID:</strong> {deviceId || "Not ready"}
-            </p>
-            <p>
-              <strong>SDK:</strong> {sdkReady ? "Loaded" : "Not loaded"}
-            </p>
+            <div className="data-box" style={{ marginTop: 16 }}>
+              <div className="info-row">
+                <strong>Status</strong>
+                <span>{status}</span>
+              </div>
+              <div className="info-row">
+                <strong>Device ID</strong>
+                <span className="muted">{deviceId || "Not ready"}</span>
+              </div>
+              <div className="info-row">
+                <strong>SDK</strong>
+                <span className="muted">{sdkReady ? "Loaded" : "Not loaded"}</span>
+              </div>
+            </div>
           </section>
 
           <section className="card">
-            <h2>Step 2: Join WhatsApp Sandbox</h2>
-            <p>Send this message on WhatsApp to join the sandbox:</p>
-            <div style={{ background: "#0d1117", padding: "12px", borderRadius: "8px", marginTop: "12px" }}>
-              <p style={{ margin: "4px 0" }}>
-                <strong>Phone number:</strong> <code>+1 415 523 8886</code>
+            <h2>
+              <span className="step-label">2</span>Join WhatsApp Sandbox
+            </h2>
+            <p className="muted" style={{ marginTop: 4 }}>Send this message on WhatsApp to join the sandbox:</p>
+            <div className="sandbox-box">
+              <p>
+                <strong>Phone:</strong> <code>+1 415 523 8886</code>
               </p>
-              <p style={{ margin: "4px 0" }}>
+              <p>
                 <strong>Message:</strong> <code>join ill-state</code>
               </p>
             </div>
-            <p className="muted" style={{ marginTop: "12px" }}>
+            <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>
               You&apos;ll receive a confirmation once joined.
             </p>
           </section>
 
           <section className="card">
-            <h2>Step 3: Request a Song</h2>
-            <p>
-              After joining, send a song title to the same number. Example: <code>Blinding Lights by The Weeknd</code>
+            <h2>
+              <span className="step-label">3</span>Request a Song
+            </h2>
+            <p style={{ marginTop: 4 }}>
+              Send a song title to the same number, e.g.:{" "}
+              <code>Blinding Lights by The Weeknd</code>
             </p>
-            <p className="muted">
-              The app will search Spotify and play it automatically on this page!
+            <p className="muted" style={{ fontSize: 13 }}>
+              The app will search Spotify and play it automatically on this page.
             </p>
-            
+
             {latestRequest ? (
-              <div style={{ marginTop: "16px", background: "#0d1117", padding: "12px", borderRadius: "8px" }}>
-                <p style={{ margin: "4px 0" }}>
-                  <strong>Latest Request:</strong> {latestRequest.title} — {latestRequest.artist}
-                </p>
-                <p className="muted" style={{ margin: "4px 0" }}>
-                  Query: {latestRequest.query}
-                </p>
-                <p className="muted" style={{ margin: "4px 0" }}>
-                  From: {latestRequest.from}
-                </p>
-                <p className="muted" style={{ margin: "4px 0" }}>
-                  At: {new Date(latestRequest.createdAt).toLocaleString()}
-                </p>
+              <div className="data-box">
+                <div className="info-row">
+                  <strong>Track</strong>
+                  <span>{latestRequest.title} — {latestRequest.artist}</span>
+                </div>
+                <div className="info-row">
+                  <strong>From</strong>
+                  <span className="muted">{latestRequest.from}</span>
+                </div>
+                <div className="info-row">
+                  <strong>Query</strong>
+                  <code>{latestRequest.query}</code>
+                </div>
+                <div className="info-row">
+                  <strong>Time</strong>
+                  <span className="muted">{new Date(latestRequest.createdAt).toLocaleString()}</span>
+                </div>
               </div>
             ) : (
-              <p className="muted" style={{ marginTop: "16px" }}>No WhatsApp requests received yet.</p>
+              <p className="muted" style={{ marginTop: 16, fontSize: 14 }}>
+                No WhatsApp requests received yet.
+              </p>
             )}
           </section>
         </>
@@ -648,55 +630,41 @@ export default function HomePage() {
         <>
           <section className="card">
             <h2>Song Requests Log</h2>
-            <p className="muted">
+            <p className="muted" style={{ marginTop: 4, marginBottom: 16 }}>
               All song requests received via WhatsApp. Download as CSV for analysis or record-keeping.
             </p>
-            
-            <button 
-              onClick={downloadCSV}
-              disabled={songRequests.length === 0}
-              style={{ marginTop: "12px", backgroundColor: "#238636" }}
-            >
+
+            <button onClick={downloadCSV} disabled={songRequests.length === 0}>
               📥 Download as CSV
             </button>
 
             {songRequests.length > 0 ? (
-              <div style={{ marginTop: "24px" }}>
-                <p style={{ fontWeight: 600, marginBottom: "12px" }}>
+              <div style={{ marginTop: 24 }}>
+                <p style={{ fontWeight: 600, marginBottom: 12, fontSize: 14 }}>
                   Total Requests: {songRequests.length}
                 </p>
                 <div style={{ overflowX: "auto" }}>
-                  <table style={{ 
-                    width: "100%", 
-                    borderCollapse: "collapse",
-                    fontSize: "14px"
-                  }}>
+                  <table>
                     <thead>
-                      <tr style={{ borderBottom: "2px solid #30363d" }}>
-                        <th style={{ padding: "8px", textAlign: "left" }}>Time</th>
-                        <th style={{ padding: "8px", textAlign: "left" }}>Song</th>
-                        <th style={{ padding: "8px", textAlign: "left" }}>Artist</th>
-                        <th style={{ padding: "8px", textAlign: "left" }}>From</th>
-                        <th style={{ padding: "8px", textAlign: "left" }}>Query</th>
+                      <tr>
+                        <th>Time</th>
+                        <th>Song</th>
+                        <th>Artist</th>
+                        <th>From</th>
+                        <th>Query</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {songRequests.map((req) => (
-                        <tr key={req.id} style={{ borderBottom: "1px solid #21262d" }}>
-                          <td style={{ padding: "8px" }}>
+                      {songRequests.map(req => (
+                        <tr key={req.id}>
+                          <td className="muted" style={{ whiteSpace: "nowrap", fontSize: 13 }}>
                             {new Date(req.createdAt).toLocaleString()}
                           </td>
-                          <td style={{ padding: "8px", fontWeight: 500 }}>
-                            {req.title || "-"}
-                          </td>
-                          <td style={{ padding: "8px" }}>
-                            {req.artist || "-"}
-                          </td>
-                          <td style={{ padding: "8px" }}>
-                            {req.from || "-"}
-                          </td>
-                          <td style={{ padding: "8px", fontSize: "12px", color: "#8b949e" }}>
-                            {req.query || "-"}
+                          <td style={{ fontWeight: 500 }}>{req.title || "—"}</td>
+                          <td className="muted">{req.artist || "—"}</td>
+                          <td className="muted">{req.from || "—"}</td>
+                          <td style={{ fontSize: 12 }}>
+                            <code>{req.query || "—"}</code>
                           </td>
                         </tr>
                       ))}
@@ -705,18 +673,9 @@ export default function HomePage() {
                 </div>
               </div>
             ) : (
-              <div style={{
-                marginTop: "24px",
-                padding: "24px",
-                textAlign: "center",
-                backgroundColor: "rgba(30, 215, 96, 0.05)",
-                borderRadius: "8px",
-                border: "1px dashed rgba(30, 215, 96, 0.3)"
-              }}>
-                <p className="muted">
-                  📭 No song requests yet.
-                </p>
-                <p className="muted" style={{ fontSize: "12px", marginTop: "8px" }}>
+              <div className="empty-state">
+                <p className="muted" style={{ margin: 0 }}>📭 No song requests yet.</p>
+                <p className="muted" style={{ fontSize: 13, marginTop: 8, marginBottom: 0 }}>
                   Send a WhatsApp message to <strong>+1 415 523 8886</strong> with a song title to get started.
                 </p>
               </div>
@@ -726,22 +685,27 @@ export default function HomePage() {
           {latestRequest && (
             <section className="card">
               <h2>Latest Request</h2>
-              <div style={{ background: "#0d1117", padding: "16px", borderRadius: "8px" }}>
-                <p style={{ margin: "4px 0" }}>
-                  <strong>🎵 Track:</strong> {latestRequest.title}
-                </p>
-                <p style={{ margin: "4px 0" }}>
-                  <strong>👤 Artist:</strong> {latestRequest.artist}
-                </p>
-                <p style={{ margin: "4px 0" }}>
-                  <strong>💬 From:</strong> {latestRequest.from}
-                </p>
-                <p style={{ margin: "4px 0" }}>
-                  <strong>🔍 Query:</strong> <code>{latestRequest.query}</code>
-                </p>
-                <p style={{ margin: "4px 0" }}>
-                  <strong>🕐 Time:</strong> {new Date(latestRequest.createdAt).toLocaleString()}
-                </p>
+              <div className="data-box">
+                <div className="info-row">
+                  <strong>🎵 Track</strong>
+                  <span>{latestRequest.title}</span>
+                </div>
+                <div className="info-row">
+                  <strong>👤 Artist</strong>
+                  <span>{latestRequest.artist}</span>
+                </div>
+                <div className="info-row">
+                  <strong>💬 From</strong>
+                  <span className="muted">{latestRequest.from}</span>
+                </div>
+                <div className="info-row">
+                  <strong>🔍 Query</strong>
+                  <code>{latestRequest.query}</code>
+                </div>
+                <div className="info-row">
+                  <strong>🕐 Time</strong>
+                  <span className="muted">{new Date(latestRequest.createdAt).toLocaleString()}</span>
+                </div>
               </div>
             </section>
           )}
