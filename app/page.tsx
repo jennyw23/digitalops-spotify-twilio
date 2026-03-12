@@ -572,14 +572,34 @@ export default function HomePage() {
             <h2>
               <span className="step-label">2</span>Join WhatsApp Sandbox
             </h2>
-            <p className="muted" style={{ marginTop: 4 }}>Send this message on WhatsApp to join the sandbox:</p>
-            <div className="sandbox-box">
-              <p>
-                <strong>Phone:</strong> <code>+1 415 523 8886</code>
-              </p>
-              <p>
-                <strong>Message:</strong> <code>join ill-state</code>
-              </p>
+            <p className="muted" style={{ marginTop: 4, marginBottom: 16 }}>
+              Scan the QR code or send this message on WhatsApp to join the sandbox:
+            </p>
+            <div style={{ display: "flex", gap: "20px", alignItems: "flex-start", flexWrap: "wrap" }}>
+              <div style={{
+                background: "#fff",
+                borderRadius: "12px",
+                padding: "10px",
+                display: "inline-block",
+                flexShrink: 0
+              }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="data:image/svg+xml;utf8,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 33 33%22 shape-rendering%3D%22crispEdges%22%3E%3Cpath fill%3D%22%23ffffff%22 d%3D%22M0 0h33v33H0z%22%2F%3E%3Cpath stroke%3D%22%23000000%22 d%3D%22M0 0.5h7m4 0h9m3 0h2m1 0h7M0 1.5h1m5 0h1m5 0h3m2 0h1m4 0h1m3 0h1m5 0h1M0 2.5h1m1 0h3m1 0h1m1 0h1m1 0h4m1 0h4m4 0h1m2 0h1m1 0h3m1 0h1M0 3.5h1m1 0h3m1 0h1m1 0h1m2 0h1m2 0h3m2 0h6m1 0h1m1 0h3m1 0h1M0 4.5h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m1 0h1m1 0h2m5 0h1m1 0h1m1 0h3m1 0h1M0 5.5h1m5 0h1m1 0h2m1 0h6m3 0h1m3 0h1m1 0h1m5 0h1M0 6.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M8 7.5h2m1 0h1m1 0h1m1 0h1m2 0h1m2 0h4M0 8.5h1m1 0h5m2 0h4m1 0h4m3 0h1m1 0h2m1 0h5M1 9.5h2m4 0h1m2 0h1m1 0h1m1 0h3m3 0h7m2 0h2m1 0h1M5 10.5h4m1 0h1m7 0h2m1 0h1m4 0h1m1 0h1m1 0h2M3 11.5h2m2 0h2m2 0h1m2 0h1m4 0h1m1 0h2m3 0h1m1 0h3m1 0h1M0 12.5h2m1 0h1m1 0h6m1 0h1m5 0h2m1 0h1m2 0h3m2 0h1m2 0h1M0 13.5h2m1 0h1m6 0h2m1 0h5m2 0h3m3 0h1m2 0h4M2 14.5h2m2 0h5m1 0h2m3 0h1m1 0h1m1 0h1m1 0h3m1 0h1m2 0h2M3 15.5h3m1 0h2m4 0h1m2 0h6m2 0h7M0 16.5h2m1 0h1m2 0h1m2 0h1m2 0h1m3 0h2m1 0h1m3 0h3m1 0h2m3 0h1M1 17.5h1m1 0h1m3 0h1m1 0h1m3 0h1m2 0h3m1 0h1m2 0h1m2 0h2m1 0h2M2 18.5h5m2 0h2m1 0h1m1 0h2m1 0h1m4 0h1m2 0h1m2 0h1m1 0h2M0 19.5h3m4 0h4m2 0h3m1 0h2m7 0h1m1 0h3M0 20.5h3m2 0h2m1 0h1m7 0h1m2 0h8m2 0h1m1 0h2M0 21.5h3m4 0h2m1 0h1m1 0h1m1 0h2m1 0h2m4 0h1m2 0h1m1 0h1m1 0h1m1 0h1M0 22.5h1m5 0h2m1 0h1m1 0h1m1 0h1m1 0h2m1 0h1m1 0h5m2 0h1m2 0h2M0 23.5h1m1 0h3m3 0h1m1 0h2m1 0h1m1 0h1m1 0h2m4 0h3m1 0h3m2 0h1M0 24.5h1m3 0h3m1 0h1m2 0h2m1 0h2m4 0h2m2 0h9M8 25.5h1m1 0h1m1 0h2m2 0h1m1 0h1m2 0h1m2 0h1m3 0h1m1 0h2M0 26.5h7m6 0h2m3 0h1m2 0h1m1 0h2m1 0h1m1 0h1m1 0h3M0 27.5h1m5 0h1m1 0h3m2 0h3m3 0h1m1 0h4m3 0h1m1 0h1m1 0h1M0 28.5h1m1 0h3m1 0h1m1 0h1m1 0h1m3 0h2m2 0h2m1 0h1m2 0h6M0 29.5h1m1 0h3m1 0h1m1 0h2m1 0h1m1 0h1m1 0h3m2 0h1m1 0h1m4 0h2m1 0h1M0 30.5h1m1 0h3m1 0h1m1 0h1m1 0h5m2 0h3m1 0h3m2 0h2M0 31.5h1m5 0h1m2 0h1m1 0h1m1 0h2m1 0h5m1 0h1m1 0h1m1 0h4M0 32.5h7m1 0h1m5 0h1m1 0h2m1 0h1m1 0h1m1 0h1m3 0h5%22%2F%3E%3C%2Fsvg%3E"
+                  alt="WhatsApp sandbox QR code"
+                  width={120}
+                  height={120}
+                  style={{ display: "block" }}
+                />
+              </div>
+              <div className="sandbox-box" style={{ flex: 1, minWidth: 200 }}>
+                <p>
+                  <strong>Phone:</strong> <code>+1 415 523 8886</code>
+                </p>
+                <p>
+                  <strong>Message:</strong> <code>join ill-state</code>
+                </p>
+              </div>
             </div>
             <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>
               You&apos;ll receive a confirmation once joined.
