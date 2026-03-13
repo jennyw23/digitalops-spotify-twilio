@@ -37,6 +37,14 @@ export async function getLatestSongRequest(): Promise<SongRequest | null> {
   return global.__latestSongRequestMemory ?? null;
 }
 
+export async function clearLatestSongRequest() {
+  if (hasKv) {
+    await kv.del(SONG_KEY);
+    return;
+  }
+  global.__latestSongRequestMemory = undefined;
+}
+
 export async function setActivePlaylistId(playlistId: string | null) {
   if (hasKv) {
     if (playlistId) {

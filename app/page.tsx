@@ -218,6 +218,14 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    const handleUnload = () => {
+      navigator.sendBeacon("/api/requests/clear");
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => window.removeEventListener("beforeunload", handleUnload);
+  }, []);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const accessToken = params.get("access_token");
     const refreshToken = params.get("refresh_token");
