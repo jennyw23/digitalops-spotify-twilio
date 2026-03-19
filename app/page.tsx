@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { FlightAgentTab } from "./FlightAgentTab";
 
 type TokenState = {
   accessToken: string;
@@ -41,7 +42,7 @@ type ArtistData = {
 const STORAGE_KEY = "spotify_token_state";
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState<"demo" | "jukebox" | "playlist">("demo");
+  const [activeTab, setActiveTab] = useState<"demo" | "jukebox" | "playlist" | "flights">("demo");
   const [tokenState, setTokenState] = useState<TokenState | null>(null);
   const [deviceId, setDeviceId] = useState<string>("");
   const [latestRequest, setLatestRequest] = useState<SongRequest | null>(null);
@@ -394,8 +395,8 @@ export default function HomePage() {
   return (
     <main>
       <div className="app-header">
-        <h1>Spotify + Twilio Integration</h1>
-        <p>Two-layer API demo: Spotify Web API for music data &amp; Twilio WhatsApp for remote control.</p>
+        <h1>Digital Ops Platform</h1>
+        <p>API integrations demo: Spotify music control, Twilio WhatsApp messaging, and AI flight rebooking agent.</p>
       </div>
 
       <div className="tabs">
@@ -410,6 +411,12 @@ export default function HomePage() {
           onClick={() => setActiveTab("playlist")}
         >
           📋 Song Requests
+        </button>
+        <button
+          className={`tab ${activeTab === "flights" ? "active" : ""}`}
+          onClick={() => setActiveTab("flights")}
+        >
+          ✈️ Flight Agent
         </button>
       </div>
 
@@ -739,6 +746,7 @@ export default function HomePage() {
           )}
         </>
       )}
+      {activeTab === "flights" && <FlightAgentTab />}
     </main>
   );
 }
