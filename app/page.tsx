@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FlightAgentTab } from "./FlightAgentTab";
 
 type TokenState = {
   accessToken: string;
@@ -42,7 +41,7 @@ type ArtistData = {
 const STORAGE_KEY = "spotify_token_state";
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState<"demo" | "jukebox" | "playlist" | "flights">("demo");
+  const [activeTab, setActiveTab] = useState<"demo" | "jukebox" | "playlist">("demo");
   const [tokenState, setTokenState] = useState<TokenState | null>(null);
   const [deviceId, setDeviceId] = useState<string>("");
   const [latestRequest, setLatestRequest] = useState<SongRequest | null>(null);
@@ -412,12 +411,7 @@ export default function HomePage() {
         >
           📋 Song Requests
         </button>
-        <button
-          className={`tab ${activeTab === "flights" ? "active" : ""}`}
-          onClick={() => setActiveTab("flights")}
-        >
-          ✈️ Flight Agent
-        </button>
+
       </div>
 
       {activeTab === "demo" && (
@@ -746,7 +740,7 @@ export default function HomePage() {
           )}
         </>
       )}
-      {activeTab === "flights" && <FlightAgentTab />}
+
     </main>
   );
 }
